@@ -74,24 +74,72 @@ library(MASS)
 library(MCMCpack)
 
 
-model1 <- MCMClogit(Estado~Producto+Moneda+Plan+PrimaMensual+MedioPagoEmisor+
-                      MedioPagoPlan+Antiguedad+edad+sexo+Numero_Hijos, b0=0, B0=.001, data=datos,mcmc = 4000)
+model1 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad+sexo+
+                      Numero_Hijos,b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
 
 summary(model1)
 
-#Quitar # hijos
-model2 <- MCMClogit(Estado~Producto+Moneda+Plan+PrimaMensual+MedioPagoEmisor+
-                      MedioPagoPlan+Antiguedad+edad+sexo, b0=0, B0=.001, data=datos,mcmc = 4000)
+#Quitar sexo
+model2 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad+
+                      Numero_Hijos, b0=0, B0=.001, data=datos,mcmc = 4000,
+                    marginal.likelihood ="Laplace")
 
-
+#Modelo más probable es el modelo 2 (sin sexo)
 BF<-BayesFactor(model1,model2)
 mod.probs<- PostProbMod(BF)
 mod.probs
 
+summary(model2)
+
+#Quitar Numero hijos
+model3 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad, 
+                    b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
 
 
+#Modelo más probable es el modelo3  (sin numero hijos)
+BF<-BayesFactor(model2,model3)
+mod.probs<- PostProbMod(BF)
+mod.probs
+
+summary(model3)
 
 
+#Quitar Moneda
+model4 <- MCMClogit(Estado~Producto+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad, 
+                    b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
+
+
+#Modelo más probable es el modelo4  (sin moneda)
+BF<-BayesFactor(model3,model4)
+mod.probs<- PostProbMod(BF)
+mod.probs
+
+summary(model4)
+
+
+#Quitar Plan
+model5 <- MCMClogit(Estado~Producto+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad, 
+                    b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
+
+
+#Modelo más probable es el modelo5  (sin plan)
+BF<-BayesFactor(model4,model5)
+mod.probs<- PostProbMod(BF)
+mod.probs
+
+summary(model5)
+
+#Quitar medio pago emisor
+model6 <- MCMClogit(Estado~Producto+MedioPagoPlan+Antiguedad+edad, 
+                    b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
+
+
+#Modelo más probable es el modelo6  (sin medio de pago emisor)
+BF<-BayesFactor(model5,model6)
+mod.probs<- PostProbMod(BF)
+mod.probs
+
+summary(model6)
 
 
 
