@@ -1,0 +1,298 @@
+---
+title: "Trabajo final - Bayesiana 2020"
+output: html_notebook
+---
+
+Fuente: https://cran.r-project.org/web/packages/MCMCglmm/vignettes/CourseNotes.pdf
+
+```{r warning=FALSE, include=FALSE}
+library(multilevel)
+library(MCMCpack)
+library(MCMCglmm)
+library(bayesplot)
+library(tidyverse)
+library(coda)
+
+```
+
+Cargando datos
+```{r}
+datos=read.csv("BASE SEGUROS.csv",sep = ";",dec=",",stringsAsFactors = F)
+
+datos$Producto<-as.factor(datos$Producto)
+datos$Moneda<-as.factor(datos$Moneda)
+datos$Plan<-as.factor(datos$Plan)
+datos$MedioPagoEmisor<-as.factor(datos$MedioPagoEmisor)
+datos$MedioPagoPlan<-as.factor(datos$MedioPagoPlan)
+datos$sexo<-as.numeric(datos$sexo)
+datos$Estado<-as.numeric(datos$Estado)
+datos$Numero_Hijos<-as.numeric(datos$Numero_Hijos)
+
+datos <- datos %>% 
+  select(Estado, Producto, MedioPagoPlan, Antiguedad, edad)
+
+#datos <- mlr::createDummyFeatures(datos, target = 'Estado', cols = c("Producto", "MedioPagoPlan"))
+
+prop.table(table(datos$Estado))
+
+```
+
+```{r}
+
+set.seed(1353)
+split <- rsample::initial_split(datos)
+train_datos <- rsample::training(split)
+test_datos <- rsample::testing(split)
+
+```
+
+
+
+# Modelos
+
+## Primer modelo (priori planas no informativas)
+
+```{r}
+
+prior1 <- list(R = list(V = 1, nu = 0))
+mod1 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior1, family = "categorical")
+
+summary(mod1)
+
+```
+
+### Convergencia
+```{r}
+plot(mod1$Sol) 
+
+geweke.plot(mod1$Sol) 
+
+autocorr.plot(mod1$Sol) 
+
+```
+
+No hay convergencia segun ninguno de los criterios.
+
+### Prediccion
+```{r}
+
+pred1 <- predict(mod1, newdata = test_datos)
+
+pred1 %>% 
+  as_tibble() %>% 
+  mutate(
+    pred = as_factor(if_else(V1>.5,1,0)),
+    verd = as_factor(test_datos$Estado)
+  ) %>% 
+  yardstick::conf_mat(verd, pred)
+
+
+
+  
+```
+
+
+## Segundo modelo (priori plana no informativa para los betas y gamma para el error)
+
+```{r}
+
+prior2 <- list(R = list(V = 1, nu = 0.002))
+mod2 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior2, family = "categorical")
+
+summary(mod2)
+
+```
+
+
+### Convergencia
+```{r}
+plot(mod2$Sol) 
+
+geweke.plot(mod2$Sol) 
+
+autocorr.plot(mod2$Sol) 
+
+```
+
+La convergencia es un poco mejor para algunos parametros pero no todos convergen.
+
+### Prediccion
+```{r}
+
+pred2 <- predict(mod2, newdata = test_datos)
+
+pred2 %>% 
+  as_tibble() %>% 
+  mutate(
+    pred = as_factor(if_else(V1>.5,1,0)),
+    verd = as_factor(test_datos$Estado)
+  ) %>% 
+  yardstick::conf_mat(verd, pred)
+
+
+
+  
+```
+
+
+## Tercer modelo (priori plana informativa para betas)
+
+```{r}
+prior3 = list(B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)), R = list(V = 1, nu = 0.002))
+
+mod3 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior3, family = "categorical")
+
+summary(mod3)
+
+```
+
+
+### Convergencia
+```{r}
+plot(mod3$Sol) 
+
+geweke.plot(mod3$Sol) 
+
+autocorr.plot(mod3$Sol) 
+
+```
+La convergencia luce mejor pero algunas variables siguen presetando problemas: antiguedad.
+
+### Prediccion
+```{r}
+
+pred3 <- predict(mod3, newdata = test_datos)
+
+pred3 %>% 
+  as_tibble() %>% 
+  mutate(
+    pred = as_factor(if_else(V1>.5,1,0)),
+    verd = as_factor(test_datos$Estado)
+  ) %>% 
+  yardstick::conf_mat(verd, pred)
+
+```
+
+## Cuarto modelo (priori de Gelman para betas)
+
+```{r}
+prior4 = list(B = list(
+  mu = rep(0, 11),
+  V = gelman.prior(
+    ~ Producto + MedioPagoPlan + Antiguedad + edad,
+    data = train_datos,
+    scale = sqrt(pi ^ 2 / 3 + 1),
+    intercept = T
+  )
+),
+R = list(V = 1, nu = 0.002))
+
+mod4 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior4, family = "categorical")
+
+summary(mod4)
+
+```
+Convergencia peor
+
+### Convergencia
+```{r}
+plot(mod4$Sol) 
+
+geweke.plot(mod4$Sol) 
+
+autocorr.plot(mod4$Sol) 
+
+```
+### Prediccion
+```{r}
+
+pred4 <- predict(mod4, newdata = test_datos)
+
+pred4 %>% 
+  as_tibble() %>% 
+  mutate(
+    pred = as_factor(if_else(V1>.5,1,0)),
+    verd = as_factor(test_datos$Estado)
+  ) %>% 
+  yardstick::conf_mat(verd, pred)
+
+```
+
+## quinto modelo (priori plana informativa para betas y errores fijados en 1)
+
+```{r}
+# prior3 = list(B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)), R = list(V = 1, nu = 0.002))
+
+prior5 = list(R = list(V = 1, fix = 1),B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)))
+
+mod5 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior5, family = "categorical")
+
+summary(mod5)
+
+```
+
+### Convergencia
+```{r}
+plot(mod5$Sol) 
+
+geweke.plot(mod5$Sol) 
+
+autocorr.plot(mod5$Sol) 
+
+```
+
+### Prediccion
+```{r}
+
+pred5 <- predict(mod5, newdata = test_datos)
+
+pred5 %>% 
+  as_tibble() %>% 
+  mutate(
+    pred = as_factor(if_else(V1>.5,1,0)),
+    verd = as_factor(test_datos$Estado)
+  ) %>% 
+  yardstick::conf_mat(verd, pred)
+
+```
+
+
+
+## sexto modelo (priori plana informativa para betas y errores fijados en 1) mas iteraciones y thin = 20
+
+```{r}
+# prior3 = list(B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)), R = list(V = 1, nu = 0.002))
+
+mod6 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior5, family = "categorical", nitt = 25000, thin = 20)
+
+summary(mod6)
+
+```
+
+### Convergencia
+```{r}
+plot(mod6$Sol) 
+
+geweke.plot(mod6$Sol) 
+
+autocorr.plot(mod6$Sol) 
+
+```
+
+
+### Prediccion
+```{r}
+
+pred6 <- predict(mod6, newdata = test_datos)
+
+pred6 %>% 
+  as_tibble() %>% 
+  mutate(
+    pred = as_factor(if_else(V1>.5,1,0)),
+    verd = as_factor(test_datos$Estado)
+  ) %>% 
+  yardstick::conf_mat(verd, pred)
+
+```
+
+

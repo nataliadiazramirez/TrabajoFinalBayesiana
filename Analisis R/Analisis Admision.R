@@ -50,16 +50,16 @@ grid()
 coda::raftery.diag(posterior) 
 
 #1.Geweke
-#Alcanza convergencia ya que en el gráfico se observa que los puntos estan dentro de los límites.
+#Alcanza convergencia ya que en el gr?fico se observa que los puntos estan dentro de los l?mites.
 coda::geweke.plot(posterior) 
 
-#2.Gráfico de autocorrelación
+#2.Gr?fico de autocorrelaci?n
 #Si hay convergencia ya que el primer rezago es alto y luego las barras de los otros rezagos disminuyen.
 coda::autocorr.plot(posterior) 
 
 #3.Heidelberger y Welch
 #Los valores muestreados para cada variable forman un proceso estacionario, ya que no se rechaza
-#la hipótesis nula. Por lo que se puede decir que se alcanza convergencia.
+#la hip?tesis nula. Por lo que se puede decir que se alcanza convergencia.
 coda::heidel.diag(posterior)
 
 
@@ -79,7 +79,7 @@ summary(model1)
 model2 <-MCMClogit(Research~GRE.Score+Chance.of.Admit,
                    b0=0, B0=.001, data=datos,mcmc = 3750,marginal.likelihood ="Laplace")
 
-#Modelo más probable es el modelo 2 (sin las 6 variables )
+#Modelo m?s probable es el modelo 2 (sin las 6 variables )
 BF<-BayesFactor(model1,model2)
 mod.probs<- PostProbMod(BF)
 mod.probs
