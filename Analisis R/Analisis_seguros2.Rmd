@@ -47,7 +47,7 @@ test_datos <- rsample::testing(split)
 
 # Modelos
 
-## Primer modelo (priori planas no informativas)
+## Modelo 1 (priori planas no informativas)
 
 ```{r}
 prior1 <- list(R = list(V = 1, nu = 0))
@@ -62,11 +62,9 @@ No hay convergencia según ninguno de los criterios.
 
 ```{r}
 plot(mod1$Sol) 
-
 geweke.plot(mod1$Sol) 
-
 autocorr.plot(mod1$Sol) 
-
+coda::heidel.diag(mod1$Sol)
 ```
 
 
@@ -108,7 +106,7 @@ asertividad_negativa
 ```
 
 
-## Segundo modelo (priori plana no informativa para los betas y gamma para el error)
+## Modelo 2 (priori plana no informativa para los betas y gamma para el error)
 
 ```{r}
 prior2 <- list(R = list(V = 1, nu = 0.002))
@@ -125,11 +123,9 @@ La convergencia es un poco mejor para algunos parámetros pero no todos converge
 
 ```{r}
 plot(mod2$Sol) 
-
 geweke.plot(mod2$Sol) 
-
 autocorr.plot(mod2$Sol) 
-
+coda::heidel.diag(mod2$Sol)
 ```
 
 
@@ -172,7 +168,7 @@ asertividad_negativa
 ```
 
 
-## Tercer modelo (priori plana informativa para betas)
+## Modelo 3 (priori plana informativa para betas)
 
 ```{r}
 prior3 = list(B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)), R = list(V = 1, nu = 0.002))
@@ -190,14 +186,11 @@ summary(mod3)
 
 La convergencia luce mejor pero algunas variables siguen presentando problemas: antiguedad.
 
-
 ```{r}
 plot(mod3$Sol) 
-
 geweke.plot(mod3$Sol) 
-
 autocorr.plot(mod3$Sol) 
-
+coda::heidel.diag(mod3$Sol)
 ```
 
 
@@ -239,7 +232,7 @@ asertividad_negativa
 
 ```
 
-## Cuarto modelo (priori de Gelman para betas)
+## Modelo 4 (priori de Gelman para betas)
 
 ```{r}
 prior4 = list(B = list(
@@ -267,11 +260,9 @@ Convergencia peor
 
 ```{r}
 plot(mod4$Sol) 
-
 geweke.plot(mod4$Sol) 
-
 autocorr.plot(mod4$Sol) 
-
+coda::heidel.diag(mod4$Sol)
 ```
 
 ### Prediccion
@@ -312,7 +303,7 @@ asertividad_negativa
 
 ```
 
-## quinto modelo (priori plana informativa para betas y errores fijados en 1)
+## Modelo 5 (priori plana informativa para betas y errores fijados en 1)
 
 ```{r}
 prior5 = list(R = list(V = 1, fix = 1),B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)))
@@ -328,16 +319,13 @@ summary(mod5)
 
 ```{r}
 plot(mod5$Sol) 
-
 geweke.plot(mod5$Sol) 
-
 autocorr.plot(mod5$Sol) 
-
+coda::heidel.diag(mod5$Sol)
 ```
 
 ### Prediccion
 ```{r}
-
 pred5 <- predict(mod5, newdata = test_datos)
 
 p5<-pred5 %>% 
@@ -370,30 +358,24 @@ asertividad_positiva
 #Asertividad Negativa (NP)
 asertividad_negativa<-round(diag(p5)[1]/rowSums(p5)[1],4)
 asertividad_negativa 
-
 ```
 
-## sexto modelo (priori plana informativa para betas y errores fijados en 1) mas iteraciones y thin = 20
+## Modelo 6 (priori plana informativa para betas y errores fijados en 1) mas iteraciones y thin = 20
 
 ```{r}
 mod6 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior5, family = "categorical", nitt = 30000, thin = 20,burnin =3000)
 
 mod6$DIC
 summary(mod6)
-
 ```
 
 ### Convergencia
 
 ```{r}
 plot(mod6$Sol) 
-
 geweke.plot(mod6$Sol) 
-
 autocorr.plot(mod6$Sol) 
-
 coda::heidel.diag(mod6$Sol)
-
 ```
 
 
@@ -432,7 +414,6 @@ asertividad_positiva
 #Asertividad Negativa (NP)
 asertividad_negativa<-round(diag(p6)[1]/rowSums(p6)[1],4)
 asertividad_negativa 
-
 ```
 
 
