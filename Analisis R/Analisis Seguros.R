@@ -30,86 +30,104 @@ datos$sexo<-as.factor(datos$sexo)
 datos$Estado<-as.numeric(datos$Estado)
 datos$Numero_Hijos<-as.numeric(datos$Numero_Hijos)
 
-#1. Convergencia
-n<-nrow(datos)
-n
-x<-table(datos$Estado)[2]
-x
-# La previa de Jeffreys es Beta(0.5,0.5)
-posterior <- MCMCpack::MCbinomialbeta(x, n, alpha=0.5, beta=0.5, mc=4000)
+# Seleccion de variables
 
-summary(posterior)
-plot(posterior)
-
-grid <- seq(0,1,0.01)
-plot(grid, dbeta(grid, 0.5, 0.5), type="l", col="red",ylim=c(0,100), lwd=2,xlab="pi", ylab="density")
-lines(density(posterior), col="blue", lwd=2)
-legend("topright", c("prior", "posterior"), lwd=2, col=c("red", "blue"))
-grid()
-
-
-#convergencia
-
-# Longitud de la cadena
-coda::raftery.diag(posterior) 
-
-#1.Geweke
-#Alcanza convergencia ya que en el gráfico se observa que los puntos estan dentro de los límites.
-coda::geweke.plot(posterior) 
-
-#2.Gráfico de autocorrelación
-#Si hay convergencia ya que el primer rezago es alto y luego las barras de los otros rezagos disminuyen.
-coda::autocorr.plot(posterior) 
-
-#3.Heidelberger y Welch
-#Los valores muestreados para cada variable forman un proceso estacionario, ya que no se rechaza
-#la hipótesis nula. Por lo que se puede decir que se alcanza convergencia.
-coda::heidel.diag(posterior)
-
-
-
-#2. Modelo logistico
 library(coda)
 library(MASS)
 library(MCMCpack)
 
 
-model1 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad+sexo+
-                      Numero_Hijos,b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
+model1 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad+sexo+Numero_Hijos,
+                    b0=0, B0=.001, data=datos,mcmc = 10000,marginal.likelihood ="Laplace",
+                    burnin = 1000,thin = 10)
+
+#convergencia
+
+#1.Geweke
+#Alcanza convergencia ya que en el gráfico se observa que los puntos estan dentro de los límites.
+coda::geweke.plot(model1) 
+
+#2.Gráfico de autocorrelación
+#Si hay convergencia ya que el primer rezago es alto y luego las barras de los otros rezagos disminuyen.
+coda::autocorr.plot(model1) 
+
+#3.Heidelberger y Welch
+#Los valores muestreados para cada variable forman un proceso estacionario, ya que no se rechaza
+#la hipótesis nula. Por lo que se puede decir que se alcanza convergencia.
+coda::heidel.diag(model1)
 
 summary(model1)
 
-#Quitar sexo
-model2 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad+
-                      Numero_Hijos, b0=0, B0=.001, data=datos,mcmc = 4000,
-                    marginal.likelihood ="Laplace")
 
-#Modelo más probable es el modelo 2 (sin sexo)
+#Quitar sexo,Numero hijos
+model2 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad,
+                    b0=0, B0=.001, data=datos,mcmc = 30000,
+                    marginal.likelihood ="Laplace",burnin = 1000,thin = 10)
+
+#Modelo más probable es el modelo 2 (sin sexo, numero hijos)
 BF<-BayesFactor(model1,model2)
 mod.probs<- PostProbMod(BF)
 mod.probs
 
+
+#convergencia
+
+#1.Geweke
+#Alcanza convergencia ya que en el gráfico se observa que los puntos estan dentro de los límites.
+coda::geweke.plot(model2) 
+
+#2.Gráfico de autocorrelación
+#Si hay convergencia ya que el primer rezago es alto y luego las barras de los otros rezagos disminuyen.
+coda::autocorr.plot(model2) 
+
+#3.Heidelberger y Welch
+#Los valores muestreados para cada variable forman un proceso estacionario, ya que no se rechaza
+#la hipótesis nula. Por lo que se puede decir que se alcanza convergencia.
+coda::heidel.diag(model2)
+
 summary(model2)
 
-#Quitar Numero hijos
-model3 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad, 
-                    b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
 
 
-#Modelo más probable es el modelo3  (sin numero hijos)
+
+#Quitar Moneda y plan
+model3 <- MCMClogit(Estado~Producto+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad, 
+                    b0=0, B0=.001, data=datos,mcmc = 30000,marginal.likelihood ="Laplace",
+                    burnin = 1000,thin = 10)
+
+
+#Modelo más probable es el modelo3  (sin moneda y plan)
 BF<-BayesFactor(model2,model3)
 mod.probs<- PostProbMod(BF)
 mod.probs
 
+
+#convergencia
+
+#1.Geweke
+#Alcanza convergencia ya que en el gráfico se observa que los puntos estan dentro de los límites.
+coda::geweke.plot(model3) 
+
+#2.Gráfico de autocorrelación
+#Si hay convergencia ya que el primer rezago es alto y luego las barras de los otros rezagos disminuyen.
+coda::autocorr.plot(model3) 
+
+#3.Heidelberger y Welch
+#Los valores muestreados para cada variable forman un proceso estacionario, ya que no se rechaza
+#la hipótesis nula. Por lo que se puede decir que se alcanza convergencia.
+coda::heidel.diag(model3)
+
+
 summary(model3)
 
 
-#Quitar Moneda
-model4 <- MCMClogit(Estado~Producto+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad, 
-                    b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
+#Quitar medio pago emisor
+model4 <- MCMClogit(Estado~Producto+MedioPagoPlan+Antiguedad+edad, 
+                    b0=0, B0=.001, data=datos,mcmc = 30000,marginal.likelihood ="Laplace",
+                    burnin = 1000,thin = 10)
 
 
-#Modelo más probable es el modelo4  (sin moneda)
+#Modelo más probable es el modelo4  (sin medio de pago emisor)
 BF<-BayesFactor(model3,model4)
 mod.probs<- PostProbMod(BF)
 mod.probs
@@ -117,29 +135,28 @@ mod.probs
 summary(model4)
 
 
-#Quitar Plan
-model5 <- MCMClogit(Estado~Producto+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad, 
-                    b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
+#convergencia
+
+#1.Geweke
+#Alcanza convergencia ya que en el gráfico se observa que los puntos estan dentro de los límites.
+coda::geweke.plot(model4) 
+
+#2.Gráfico de autocorrelación
+#Si hay convergencia ya que el primer rezago es alto y luego las barras de los otros rezagos disminuyen.
+coda::autocorr.plot(model4) 
+
+#3.Heidelberger y Welch
+#Los valores muestreados para cada variable forman un proceso estacionario, ya que no se rechaza
+#la hipótesis nula. Por lo que se puede decir que se alcanza convergencia.
+coda::heidel.diag(model4)
 
 
-#Modelo más probable es el modelo5  (sin plan)
-BF<-BayesFactor(model4,model5)
-mod.probs<- PostProbMod(BF)
-mod.probs
-
-summary(model5)
-
-#Quitar medio pago emisor
-model6 <- MCMClogit(Estado~Producto+MedioPagoPlan+Antiguedad+edad, 
-                    b0=0, B0=.001, data=datos,mcmc = 4000,marginal.likelihood ="Laplace")
 
 
-#Modelo más probable es el modelo6  (sin medio de pago emisor)
-BF<-BayesFactor(model5,model6)
-mod.probs<- PostProbMod(BF)
-mod.probs
 
-summary(model6)
+
+
+
 
 
 

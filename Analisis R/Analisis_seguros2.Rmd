@@ -16,6 +16,7 @@ library(coda)
 ```
 
 Cargando datos
+
 ```{r}
 datos=read.csv("BASE SEGUROS.csv",sep = ";",dec=",",stringsAsFactors = F)
 
@@ -31,21 +32,17 @@ datos$Numero_Hijos<-as.numeric(datos$Numero_Hijos)
 datos <- datos %>% 
   select(Estado, Producto, MedioPagoPlan, Antiguedad, edad)
 
-#datos <- mlr::createDummyFeatures(datos, target = 'Estado', cols = c("Producto", "MedioPagoPlan"))
-
 prop.table(table(datos$Estado))
 
 ```
 
 ```{r}
-
+#Bases para Training Testing
 set.seed(1353)
 split <- rsample::initial_split(datos)
 train_datos <- rsample::training(split)
 test_datos <- rsample::testing(split)
-
 ```
-
 
 
 # Modelos
@@ -53,15 +50,16 @@ test_datos <- rsample::testing(split)
 ## Primer modelo (priori planas no informativas)
 
 ```{r}
-
 prior1 <- list(R = list(V = 1, nu = 0))
 mod1 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior1, family = "categorical")
-
+mod1$DIC
 summary(mod1)
-
 ```
 
 ### Convergencia
+
+No hay convergencia según ninguno de los criterios.
+
 ```{r}
 plot(mod1$Sol) 
 
@@ -71,40 +69,60 @@ autocorr.plot(mod1$Sol)
 
 ```
 
-No hay convergencia segun ninguno de los criterios.
 
 ### Prediccion
-```{r}
 
+```{r}
 pred1 <- predict(mod1, newdata = test_datos)
 
-pred1 %>% 
+p1<-pred1 %>% 
   as_tibble() %>% 
   mutate(
-    pred = as_factor(if_else(V1>.5,1,0)),
+    pred = as_factor(if_else(V1>.3,1,0)),
     verd = as_factor(test_datos$Estado)
   ) %>% 
   yardstick::conf_mat(verd, pred)
 
+p1<-p1$table
+p1
 
+#precisión Global
+precision_global<-round(sum(diag(p1))/sum(p1),4)
+precision_global
 
-  
+#Precisión Positiva (PP)
+precision_positiva <- round(diag(p1)[2]/colSums(p1)[2],4)
+precision_positiva
+
+#Precisión Negativa (PN)
+precision_negativa <- round(diag(p1)[1]/colSums(p1)[1],4)
+precision_negativa
+
+#Asertividad Positiva (AP)
+asertividad_positiva<-round(diag(p1)[2]/rowSums(p1)[2],4)
+asertividad_positiva
+
+#Asertividad Negativa (NP)
+asertividad_negativa<-round(diag(p1)[1]/rowSums(p1)[1],4)
+asertividad_negativa 
 ```
 
 
 ## Segundo modelo (priori plana no informativa para los betas y gamma para el error)
 
 ```{r}
-
 prior2 <- list(R = list(V = 1, nu = 0.002))
 mod2 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior2, family = "categorical")
 
+mod2$DIC
 summary(mod2)
-
 ```
 
 
 ### Convergencia
+
+La convergencia es un poco mejor para algunos parámetros pero no todos convergen.
+
 ```{r}
 plot(mod2$Sol) 
 
@@ -114,24 +132,43 @@ autocorr.plot(mod2$Sol)
 
 ```
 
-La convergencia es un poco mejor para algunos parametros pero no todos convergen.
 
 ### Prediccion
-```{r}
 
+```{r}
 pred2 <- predict(mod2, newdata = test_datos)
 
-pred2 %>% 
+p2<-pred2 %>% 
   as_tibble() %>% 
   mutate(
-    pred = as_factor(if_else(V1>.5,1,0)),
+    pred = as_factor(if_else(V1>.3,1,0)),
     verd = as_factor(test_datos$Estado)
   ) %>% 
   yardstick::conf_mat(verd, pred)
 
+p2<-p2$table
+p2
 
+#precisión Global
+precision_global<-round(sum(diag(p2))/sum(p2),4)
+precision_global
 
-  
+#Precisión Positiva (PP)
+precision_positiva <- round(diag(p2)[2]/colSums(p2)[2],4)
+precision_positiva
+
+#Precisión Negativa (PN)
+precision_negativa <- round(diag(p2)[1]/colSums(p2)[1],4)
+precision_negativa
+
+#Asertividad Positiva (AP)
+asertividad_positiva<-round(diag(p2)[2]/rowSums(p2)[2],4)
+asertividad_positiva
+
+#Asertividad Negativa (NP)
+asertividad_negativa<-round(diag(p2)[1]/rowSums(p2)[1],4)
+asertividad_negativa 
+
 ```
 
 
@@ -142,12 +179,18 @@ prior3 = list(B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)), R = list(V
 
 mod3 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior3, family = "categorical")
 
+mod3$DIC
+ 
 summary(mod3)
 
 ```
 
 
 ### Convergencia
+
+La convergencia luce mejor pero algunas variables siguen presentando problemas: antiguedad.
+
+
 ```{r}
 plot(mod3$Sol) 
 
@@ -156,20 +199,43 @@ geweke.plot(mod3$Sol)
 autocorr.plot(mod3$Sol) 
 
 ```
-La convergencia luce mejor pero algunas variables siguen presetando problemas: antiguedad.
+
 
 ### Prediccion
-```{r}
 
+```{r}
 pred3 <- predict(mod3, newdata = test_datos)
 
-pred3 %>% 
+p3<-pred3 %>% 
   as_tibble() %>% 
   mutate(
-    pred = as_factor(if_else(V1>.5,1,0)),
+    pred = as_factor(if_else(V1>.3,1,0)),
     verd = as_factor(test_datos$Estado)
   ) %>% 
   yardstick::conf_mat(verd, pred)
+
+p3<-p3$table
+p3
+
+#precisión Global
+precision_global<-round(sum(diag(p3))/sum(p3),4)
+precision_global
+
+#Precisión Positiva (PP)
+precision_positiva <- round(diag(p3)[2]/colSums(p3)[2],4)
+precision_positiva
+
+#Precisión Negativa (PN)
+precision_negativa <- round(diag(p3)[1]/colSums(p3)[1],4)
+precision_negativa
+
+#Asertividad Positiva (AP)
+asertividad_positiva<-round(diag(p3)[2]/rowSums(p3)[2],4)
+asertividad_positiva
+
+#Asertividad Negativa (NP)
+asertividad_negativa<-round(diag(p3)[1]/rowSums(p3)[1],4)
+asertividad_negativa 
 
 ```
 
@@ -189,12 +255,16 @@ R = list(V = 1, nu = 0.002))
 
 mod4 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior4, family = "categorical")
 
+mod4$DIC
 summary(mod4)
 
 ```
-Convergencia peor
+
 
 ### Convergencia
+
+Convergencia peor
+
 ```{r}
 plot(mod4$Sol) 
 
@@ -203,35 +273,59 @@ geweke.plot(mod4$Sol)
 autocorr.plot(mod4$Sol) 
 
 ```
-### Prediccion
-```{r}
 
+### Prediccion
+
+```{r}
 pred4 <- predict(mod4, newdata = test_datos)
 
-pred4 %>% 
+p4<-pred4 %>% 
   as_tibble() %>% 
   mutate(
-    pred = as_factor(if_else(V1>.5,1,0)),
+    pred = as_factor(if_else(V1>.3,1,0)),
     verd = as_factor(test_datos$Estado)
   ) %>% 
   yardstick::conf_mat(verd, pred)
+
+p4<-p4$table
+p4
+
+#precisión Global
+precision_global<-round(sum(diag(p4))/sum(p4),4)
+precision_global
+
+#Precisión Positiva (PP)
+precision_positiva <- round(diag(p4)[2]/colSums(p4)[2],4)
+precision_positiva
+
+#Precisión Negativa (PN)
+precision_negativa <- round(diag(p4)[1]/colSums(p4)[1],4)
+precision_negativa
+
+#Asertividad Positiva (AP)
+asertividad_positiva<-round(diag(p4)[2]/rowSums(p4)[2],4)
+asertividad_positiva
+
+#Asertividad Negativa (NP)
+asertividad_negativa<-round(diag(p4)[1]/rowSums(p4)[1],4)
+asertividad_negativa 
 
 ```
 
 ## quinto modelo (priori plana informativa para betas y errores fijados en 1)
 
 ```{r}
-# prior3 = list(B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)), R = list(V = 1, nu = 0.002))
-
 prior5 = list(R = list(V = 1, fix = 1),B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)))
 
 mod5 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior5, family = "categorical")
 
+mod5$DIC
 summary(mod5)
 
 ```
 
 ### Convergencia
+
 ```{r}
 plot(mod5$Sol) 
 
@@ -246,30 +340,51 @@ autocorr.plot(mod5$Sol)
 
 pred5 <- predict(mod5, newdata = test_datos)
 
-pred5 %>% 
+p5<-pred5 %>% 
   as_tibble() %>% 
   mutate(
-    pred = as_factor(if_else(V1>.5,1,0)),
+    pred = as_factor(if_else(V1>.3,1,0)),
     verd = as_factor(test_datos$Estado)
   ) %>% 
   yardstick::conf_mat(verd, pred)
 
+p5<-p5$table
+p5
+
+#precisión Global
+precision_global<-round(sum(diag(p5))/sum(p5),4)
+precision_global
+
+#Precisión Positiva (PP)
+precision_positiva <- round(diag(p5)[2]/colSums(p5)[2],4)
+precision_positiva
+
+#Precisión Negativa (PN)
+precision_negativa <- round(diag(p5)[1]/colSums(p5)[1],4)
+precision_negativa
+
+#Asertividad Positiva (AP)
+asertividad_positiva<-round(diag(p5)[2]/rowSums(p5)[2],4)
+asertividad_positiva
+
+#Asertividad Negativa (NP)
+asertividad_negativa<-round(diag(p5)[1]/rowSums(p5)[1],4)
+asertividad_negativa 
+
 ```
-
-
 
 ## sexto modelo (priori plana informativa para betas y errores fijados en 1) mas iteraciones y thin = 20
 
 ```{r}
-# prior3 = list(B = list(mu = rep(0, 11), V = diag(11) * (1 + pi^2/3)), R = list(V = 1, nu = 0.002))
+mod6 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior5, family = "categorical", nitt = 30000, thin = 20,burnin =3000)
 
-mod6 <- MCMCglmm(Estado~Producto+MedioPagoPlan+Antiguedad+edad, data = train_datos, prior = prior5, family = "categorical", nitt = 25000, thin = 20)
-
+mod6$DIC
 summary(mod6)
 
 ```
 
 ### Convergencia
+
 ```{r}
 plot(mod6$Sol) 
 
@@ -277,21 +392,46 @@ geweke.plot(mod6$Sol)
 
 autocorr.plot(mod6$Sol) 
 
+coda::heidel.diag(mod6$Sol)
+
 ```
 
 
 ### Prediccion
-```{r}
 
+```{r}
 pred6 <- predict(mod6, newdata = test_datos)
 
-pred6 %>% 
+p6<-pred6 %>% 
   as_tibble() %>% 
   mutate(
-    pred = as_factor(if_else(V1>.5,1,0)),
+    pred = as_factor(if_else(V1>.3,1,0)),
     verd = as_factor(test_datos$Estado)
   ) %>% 
   yardstick::conf_mat(verd, pred)
+
+p6<-p6$table
+p6
+
+#precisión Global
+precision_global<-round(sum(diag(p6))/sum(p6),4)
+precision_global
+
+#Precisión Positiva (PP)
+precision_positiva <- round(diag(p6)[2]/colSums(p6)[2],4)
+precision_positiva
+
+#Precisión Negativa (PN)
+precision_negativa <- round(diag(p6)[1]/colSums(p6)[1],4)
+precision_negativa
+
+#Asertividad Positiva (AP)
+asertividad_positiva<-round(diag(p6)[2]/rowSums(p6)[2],4)
+asertividad_positiva
+
+#Asertividad Negativa (NP)
+asertividad_negativa<-round(diag(p6)[1]/rowSums(p6)[1],4)
+asertividad_negativa 
 
 ```
 
