@@ -18,7 +18,7 @@
 #Medio de pago por plan: corresponde al tipo de plan de la tarjeta con que se realiza el pago de la póliza (por confidencialidad se clasificaron en Plan A, B, C, D, E) 
 #Sexo: Sexo del cliente. (0 hombre 1 mujer)
 
-
+# Datos
 datos=read.csv("BASE SEGUROS.csv",sep = ";",dec=",",stringsAsFactors = F)
 
 datos$Producto<-as.factor(datos$Producto)
@@ -36,11 +36,10 @@ library(coda)
 library(MASS)
 library(MCMCpack)
 
-
+##### Modelo1
 model1 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad+sexo+Numero_Hijos,
                     b0=0, B0=.001, data=datos,mcmc = 10000,marginal.likelihood ="Laplace",
                     burnin = 1000,thin = 10)
-
 #convergencia
 
 #1.Geweke
@@ -58,17 +57,11 @@ coda::heidel.diag(model1)
 
 summary(model1)
 
-
+##### Modelo2
 #Quitar sexo,Numero hijos
 model2 <- MCMClogit(Estado~Producto+Moneda+Plan+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad,
                     b0=0, B0=.001, data=datos,mcmc = 30000,
                     marginal.likelihood ="Laplace",burnin = 1000,thin = 10)
-
-#Modelo más probable es el modelo 2 (sin sexo, numero hijos)
-BF<-BayesFactor(model1,model2)
-mod.probs<- PostProbMod(BF)
-mod.probs
-
 
 #convergencia
 
@@ -87,21 +80,11 @@ coda::heidel.diag(model2)
 
 summary(model2)
 
-
-
-
+##### Modelo3
 #Quitar Moneda y plan
 model3 <- MCMClogit(Estado~Producto+MedioPagoEmisor+MedioPagoPlan+Antiguedad+edad, 
                     b0=0, B0=.001, data=datos,mcmc = 30000,marginal.likelihood ="Laplace",
                     burnin = 1000,thin = 10)
-
-
-#Modelo más probable es el modelo3  (sin moneda y plan)
-BF<-BayesFactor(model2,model3)
-mod.probs<- PostProbMod(BF)
-mod.probs
-
-
 #convergencia
 
 #1.Geweke
@@ -117,24 +100,13 @@ coda::autocorr.plot(model3)
 #la hipótesis nula. Por lo que se puede decir que se alcanza convergencia.
 coda::heidel.diag(model3)
 
-
 summary(model3)
 
-
+##### Modelo4
 #Quitar medio pago emisor
 model4 <- MCMClogit(Estado~Producto+MedioPagoPlan+Antiguedad+edad, 
                     b0=0, B0=.001, data=datos,mcmc = 30000,marginal.likelihood ="Laplace",
                     burnin = 1000,thin = 10)
-
-
-#Modelo más probable es el modelo4  (sin medio de pago emisor)
-BF<-BayesFactor(model3,model4)
-mod.probs<- PostProbMod(BF)
-mod.probs
-
-summary(model4)
-
-
 #convergencia
 
 #1.Geweke
@@ -150,10 +122,14 @@ coda::autocorr.plot(model4)
 #la hipótesis nula. Por lo que se puede decir que se alcanza convergencia.
 coda::heidel.diag(model4)
 
+summary(model4)
 
 
 
-
+#Modelo más probable es el modelo4 
+BF<-BayesFactor(model1,model2,model3,model4)
+mod.probs<- PostProbMod(BF)
+mod.probs
 
 
 
